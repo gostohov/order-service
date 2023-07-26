@@ -25,6 +25,7 @@ public class BookClient {
             .timeout(Duration.ofSeconds(3), Mono.empty())
             .retryWhen(
                 Retry.backoff(3, Duration.ofMillis(100))
-            );
+            )
+            .onErrorResume(Exception.class, exception -> Mono.empty());
     }
 }
