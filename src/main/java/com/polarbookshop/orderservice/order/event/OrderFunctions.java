@@ -14,13 +14,10 @@ public class OrderFunctions {
     private static final Logger log = LoggerFactory.getLogger(OrderFunctions.class);
 
     @Bean
-    public Consumer<Flux<OrderDispatchedMessage>> dispatchOrder(
-        OrderService orderService
-    ) {
+    public Consumer<Flux<OrderDispatchedMessage>> dispatchOrder(OrderService orderService) {
         return flux ->
             orderService.consumeOrderDispatchedEvent(flux)
-                .doOnNext(order -> log.info("The order with id {} is dispatched",
-                    order.id()))
+                .doOnNext(order -> log.info("The order with id {} is dispatched", order.id()))
                 .subscribe();
     }
 }
