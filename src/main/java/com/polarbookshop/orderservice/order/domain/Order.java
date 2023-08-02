@@ -44,7 +44,7 @@ public record Order (
             status,
             null,
             null,
-            null,
+            "unknown",
             null,
             0
         );
