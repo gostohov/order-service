@@ -6,22 +6,24 @@ import com.polarbookshop.orderservice.order.event.OrderAcceptedMessage;
 import com.polarbookshop.orderservice.order.event.OrderDispatchedMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @Service
 public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
-    private final OrderRepository orderRepository;
     private final BookClient bookClient;
+    private final OrderRepository orderRepository;
     private final StreamBridge streamBridge;
-    public OrderService(OrderRepository orderRepository, BookClient bookClient, StreamBridge streamBridge) {
-        this.orderRepository = orderRepository;
+
+    public OrderService(BookClient bookClient, StreamBridge streamBridge, OrderRepository orderRepository) {
         this.bookClient = bookClient;
+        this.orderRepository = orderRepository;
         this.streamBridge = streamBridge;
     }
 
@@ -52,6 +54,16 @@ public class OrderService {
         return Order.of(bookIsbn, null, null, quantity, OrderStatus.REJECTED);
     }
 
+    private void publishOrderAcceptedEvent(Order order) {
+        if (!order.status().equals(OrderStatus.ACCEPTED)) {
+            return;
+        }
+        var orderAcceptedMessage = new OrderAcceptedMessage(order.id());
+        log.info("Sending order accepted event with id: {}", order.id());
+        var result = streamBridge.send("acceptOrder-out-0", orderAcceptedMessage);
+        log.info("Result of sending data for order with id {}: {}", order.id(), result);
+    }
+
     public Flux<Order> consumeOrderDispatchedEvent(
         Flux<OrderDispatchedMessage> flux
     ) {
@@ -78,15 +90,4 @@ public class OrderService {
         );
     }
 
-    private void publishOrderAcceptedEvent(Order order) {
-        if (!order.status().equals(OrderStatus.ACCEPTED)) {
-            return;
-        }
-        var orderAcceptedMessage = new OrderAcceptedMessage(order.id());
-        log.info("Sending order accepted event with id: {}", order.id());
-        var result = streamBridge.send("acceptOrder-out-0",
-            orderAcceptedMessage);
-        log.info("Result of sending data for order with id {}: {}",
-            order.id(), result);
-    }
 }
